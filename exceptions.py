@@ -7,13 +7,3 @@ class EndPointError(Exception):
     """"Ошибка доступа к APi Яндекса."""
 
     pass
-
-class EmptyListError(Exception):
-    """"Список пуст."""
-
-    pass
-
-class TokenError(Exception):
-    """"Ошибка токена"""
-
-    pass
