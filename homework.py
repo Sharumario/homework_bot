@@ -20,7 +20,7 @@ PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 TOKENS = ['PRACTICUM_TOKEN', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID']
-RETRY_TIME = 600
+RETRY_TIME = 20
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 VERDICTS = {
@@ -29,7 +29,8 @@ VERDICTS = {
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
 SEND_MESSAGE = '"{message}": cообщение отправлено в чат!'
-ERROR_SEND = 'Сбой при отправке сообщения: {error}'
+ERROR_SEND = ('Сбой при отправке сообщения: {error}. '
+              'Сообщение: "{message}" не доставлено!')
 CONNECTION_ERROR = ('Не удалось получить доступ к API. '
                     'Параметры запроса: {endpoint}, {headers}, {params}')
 ERROR_API_RESPONSE = ('Неожиданный статус ответа API: {status_code}. '
@@ -45,6 +46,7 @@ ERROR_TOKENS = 'Ошибка токенов'
 ERROR_SERVER = 'Отказ обслуживания сети: {error}'
 VERDICT = 'Изменился статус проверки работы "{name}". {verdict}'
 ERROR_MAIN = 'Сбой в работе программы: {error}'
+EMPTY_RESPONSE = 'Список ДЗ пустой.'
 
 
 def send_message(bot, message):
@@ -53,7 +55,7 @@ def send_message(bot, message):
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
         logger.info(SEND_MESSAGE.format(message=message))
     except TelegramError as error:
-        raise TelegramError(ERROR_SEND.format(error=error))
+        raise TelegramError(ERROR_SEND.format(error=error, message=message))
 
 
 def get_api_answer(current_timestamp):
@@ -140,7 +142,10 @@ def main():
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
-            message = parse_status(homeworks[0])
+            if len(homeworks) == 0:
+                message = EMPTY_RESPONSE
+            else:
+                message = parse_status(homeworks[0])
             if cash_message != message:
                 send_message(bot, message)
                 cash_message = message
@@ -155,7 +160,9 @@ def main():
                     send_message(bot, ERROR_MAIN.format(error=error))
                     cash_message_error = str(error)
                 except TelegramError as error:
-                    logger.exception(ERROR_SEND.format(error=error))
+                    logger.exception(
+                        ERROR_SEND.format(error=error, message=message)
+                    )
         time.sleep(RETRY_TIME)
 
 
