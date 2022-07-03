@@ -1,9 +1,4 @@
-class MessageError(Exception):
-    """"Неудачная отправка сообщения."""
-
-    pass
-
-class EndPointError(Exception):
-    """"Ошибка доступа к APi Яндекса."""
+class ServerError(Exception):
+    """Ошибка доступа к APi Яндекса."""
 
     pass
