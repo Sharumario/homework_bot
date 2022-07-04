@@ -32,9 +32,9 @@ SEND_MESSAGE = '"{message}": cообщение отправлено в чат!'
 ERROR_SEND = ('Сбой при отправке сообщения: {error}. '
               'Сообщение: "{message}" не доставлено!')
 CONNECTION_ERROR = ('Не удалось получить доступ к API: {error} '
-                    'Параметры запроса: {endpoint}, {headers}, {params}')
+                    'Параметры запроса: {url}, {headers}, {params}')
 API_RESPONSE_ERROR = ('Неожиданный статус ответа API: {status_code}. '
-                      'Параметры запроса: {endpoint}, {headers}, {params}.')
+                      'Параметры запроса: {url}, {headers}, {params}.')
 RESPONSE_ERROR = ('Неверный тип данных: {type_response}. '
                   'Ожидался словарь.')
 HOMEWORKS_ERROR = ('Неверный тип данных: {type_homeworks}. '
@@ -44,7 +44,7 @@ VERDICT_ERROR = 'Неожиданное принятое значение, от�
 TOKEN_ERROR = 'Нет обязательной переменной окружения: {name}'
 TOKENS_ERROR = 'Ошибка токенов'
 SERVER_ERROR = ('Отказ обслуживания сети: "{field}: {error}" '
-                'Параметры запроса: {endpoint}, {headers}, {params}')
+                'Параметры запроса: {erl}, {headers}, {params}')
 VERDICT = 'Изменился статус проверки работы "{name}". {verdict}'
 MAIN_ERROR = 'Сбой в работе программы: {error}'
 EMPTY_RESPONSE = 'Список ДЗ пустой.'
@@ -62,28 +62,21 @@ def send_message(bot, message):
 def get_api_answer(current_timestamp):
     """Запрос к API Яндекс практикума."""
     params = {'from_date': current_timestamp}
+    PARAMETERS_REQUESTS = dict(url=ENDPOINT, headers=HEADERS, params=params)
     try:
-        homework_statuses = requests.get(
-            ENDPOINT,
-            headers=HEADERS,
-            params=params
-        )
-    except requests.ConnectionError as error:
+        homework_statuses = requests.get(**PARAMETERS_REQUESTS)
+    except requests.RequestException as error:
         raise ConnectionError(
             CONNECTION_ERROR.format(
                 error=error,
-                endpoint=ENDPOINT,
-                headers=HEADERS,
-                params=params
+                **PARAMETERS_REQUESTS
             )
         )
     if homework_statuses.status_code != 200:
         raise ServerError(
             API_RESPONSE_ERROR.format(
                 status_code=homework_statuses.status_code,
-                endpoint=ENDPOINT,
-                headers=HEADERS,
-                params=params
+                **PARAMETERS_REQUESTS
             )
         )
     response = homework_statuses.json()
@@ -93,9 +86,7 @@ def get_api_answer(current_timestamp):
                 SERVER_ERROR.format(
                     field=field,
                     error=response[field],
-                    endpoint=ENDPOINT,
-                    headers=HEADERS,
-                    params=params
+                    **PARAMETERS_REQUESTS
                 )
             )
     return response
@@ -161,10 +152,11 @@ def main():
             cash_message_error = None
 
         except Exception as error:
+            message = MAIN_ERROR.format(error=error)
+            logger.error(message)
             if cash_message_error != str(error):
                 try:
-                    logger.error(MAIN_ERROR.format(error=error))
-                    send_message(bot, MAIN_ERROR.format(error=error))
+                    send_message(bot, message)
                     cash_message_error = str(error)
                 except TelegramError as error:
                     logger.exception(
